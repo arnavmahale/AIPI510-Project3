@@ -1,0 +1,44 @@
+data:
+  source: "glue"
+  subset: "sst2"
+  cleaned_train_path: "data/processed/sst2_train.csv"
+  cleaned_val_path: "data/processed/sst2_val.csv"
+  cleaned_test_path: "data/processed/sst2_test.csv"
+  # Optional: set to a public base URL (e.g., GitHub raw or HF repo) that hosts the cleaned CSVs.
+  # Example after pushing to GitHub: https://raw.githubusercontent.com/<user>/<repo>/main/data/processed
+  remote_base_url: ""
+  text_column: "sentence"
+  target_column: "label"
+
+split:
+  test_size: 0.2
+  val_size: 0.1
+  random_state: 42
+  stratify: true
+
+features:
+  max_features: 20000
+  ngram_range: [1, 2]
+  lowercase: true
+  stop_words: null
+
+model:
+  type: "logreg"
+  c: 1.0
+  max_iter: 500
+  class_weight: null
+
+training:
+  n_jobs: 1
+
+mlflow:
+  tracking_uri: "file:./mlruns"
+  experiment_name: "sentiment-sst2"
+
+artifacts:
+  dir: "artifacts"
+  pipeline_path: "artifacts/model_pipeline.joblib"
+
+api:
+  host: "0.0.0.0"
+  port: 8000
