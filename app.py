@@ -1,3 +1,6 @@
+# Attribution
+# Portions of the codebase were developed with assistance from ChatGPT and Claude Code.
+
 import streamlit as st
 import requests
 

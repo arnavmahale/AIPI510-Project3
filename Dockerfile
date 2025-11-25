@@ -1,3 +1,6 @@
+# Attribution
+# Portions of the codebase were developed with assistance from ChatGPT and Claude Code.
+
 # syntax=docker/dockerfile:1
 
 FROM python:3.11-slim
