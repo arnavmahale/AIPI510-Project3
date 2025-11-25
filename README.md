@@ -3,11 +3,13 @@
 End-to-end sentiment analysis system using the SST-2 dataset: reproducible training, MLflow tracking, containerized FastAPI service, Cloud Run deployment, and a Streamlit front-end.
 
 ## Stack
+
 - Data/ML: Hugging Face `datasets`, scikit-learn (TF-IDF + logistic regression), MLflow for metrics/artifacts.
 - API: FastAPI + Uvicorn; Dockerized for Cloud Run.
 - Front-end: Streamlit app calling the deployed `/predict` endpoint.
 
 ## Repo layout
+
 - `config/config.yaml` — pipeline, model, and API configuration.
 - `src/data/` — data download/clean scripts (SST-2).
 - `src/data/download_processed.py` — helper to fetch cleaned CSVs from a public URL if hosted (GitHub raw/HF).
@@ -20,6 +22,7 @@ End-to-end sentiment analysis system using the SST-2 dataset: reproducible train
 - `mlruns/` — MLflow local tracking (ignored in git).
 
 ## Getting started
+
 1. Python 3.10+ recommended. Create env and install deps:
    ```bash
    python3.11 -m venv .venv
@@ -54,17 +57,21 @@ End-to-end sentiment analysis system using the SST-2 dataset: reproducible train
    ```
 
 ## Config
+
 Tune paths, split ratios, TF-IDF settings, and model params in `config/config.yaml`. MLflow tracking URI is set to a local `mlruns/` directory by default.
 
 ## API
+
 - `POST /predict` — body: `{"text": "string"}`; returns label and probability.
 
 ## Deployment targets
+
 - API: Google Cloud Run (containerized FastAPI).
 - Front-end: Streamlit Cloud (consumes live API).
 - Data hosting: push `data/processed/*.csv` to a public location (GitHub raw or Hugging Face dataset) and set `data.remote_base_url` for reproducible downloads.
 
 ## Front-end (Streamlit)
+
 - Local: `API_URL=http://localhost:8000 streamlit run streamlit_app.py`.
 - Deploy to Streamlit Cloud:
   1. Push this repo to GitHub.
@@ -73,7 +80,9 @@ Tune paths, split ratios, TF-IDF settings, and model params in `config/config.ya
   4. Add the public Streamlit link to the README.
 
 ## Cloud Run deployment (manual steps)
+
 Prereqs: gcloud CLI authenticated to your GCP project, Artifact Registry enabled.
+
 1. Ensure `artifacts/model_pipeline.joblib` exists (run training first).
 2. Build and push:
    ```bash
@@ -92,20 +101,24 @@ Prereqs: gcloud CLI authenticated to your GCP project, Artifact Registry enabled
 4. Grab the HTTPS URL from Cloud Run and set it as `API_URL` in Streamlit.
 
 ## Dataset
+
 - SST-2 (Stanford Sentiment Treebank) via Hugging Face `glue/sst2`.
 - Binary labels: 1 = positive, 0 = negative. Metric: accuracy (also report macro F1).
 - Cleaned CSVs produced by `src.data.prepare_sst2`. Host `data/processed/*.csv` in a public location (e.g., GitHub raw) and set `data.remote_base_url` for reproducible downloads.
 
 ## Model
+
 - TF-IDF + Logistic Regression (scikit-learn).
 - Hyperparameters in `config/config.yaml` (n-grams, max_features, C, max_iter).
 - Training/eval logged to MLflow at `mlruns/` (local filesystem URI).
 
 ## Notes
+
 - Train before building/deploying the API so the model artifact exists at `artifacts/model_pipeline.joblib`.
 - To run the API elsewhere, ship the artifact with the image or mount it; otherwise, the service will fail to start.
 
 ## Deliverables checklist
+
 - Code for preprocessing, training, serving, deployment scripts.
 - `config/config.yaml` for pipeline params.
 - `requirements.txt`.
@@ -116,4 +129,9 @@ Prereqs: gcloud CLI authenticated to your GCP project, Artifact Registry enabled
 - README with overview, dataset info, model summary, cloud services, setup, and links (fill in Cloud Run + Streamlit URLs when deployed).
 
 ## Status
+
 - Scaffolding in place. Next: implement data prep, training pipeline, API, Docker, Cloud Run deploy, and Streamlit UI.
+
+## Attribution
+
+- Portions of the codebase were written with assistance from ChatGPT.
