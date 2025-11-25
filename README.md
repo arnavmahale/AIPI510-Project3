@@ -1,142 +1,259 @@
-# AIPI510-Project3 — SST-2 Sentiment Pipeline
+# AIPI510-Project3 — SST-2 Sentiment Analysis Pipeline
 
-End-to-end sentiment analysis system using the SST-2 dataset: reproducible training, MLflow tracking, containerized FastAPI service, Cloud Run deployment, and a Streamlit front-end.
+End-to-end sentiment analysis system using the SST-2 dataset with reproducible training, MLflow tracking, containerized FastAPI service, Google Cloud deployment, and a Streamlit front-end interface.
 
-## Stack
+## Project Overview and Goals
 
-- Data/ML: Hugging Face `datasets`, scikit-learn (TF-IDF + logistic regression), MLflow for metrics/artifacts.
-- API: FastAPI + Uvicorn; Dockerized for Cloud Run.
-- Front-end: Streamlit app calling the deployed `/predict` endpoint.
-- Requirements: `requirements_backend.txt` (API/training), `requirements.txt` (Streamlit frontend)
+This project implements a complete machine learning pipeline for binary sentiment classification on movie reviews. The system demonstrates:
 
-## Repo layout
+- **Data Engineering**: Automated data ingestion from Hugging Face datasets with cloud storage on Google Cloud Storage (GCS)
+- **Model Development**: TF-IDF feature extraction with logistic regression, including hyperparameter configuration
+- **Experiment Tracking**: MLflow integration for reproducible model training and evaluation metrics
+- **API Service**: RESTful FastAPI endpoint for real-time sentiment predictions
+- **Containerization**: Docker-based deployment for portability and scalability
+- **Cloud Deployment**: Production deployment on Google Cloud Run with automatic scaling
+- **User Interface**: Interactive Streamlit web application for model testing
 
-- `config.yaml` — pipeline, model, and API configuration.
-- `src/data_ingest.py` — data loading from GCS.
-- `src/train.py` — training pipeline with MLflow logging.
-- `src/api/main.py` — FastAPI app loading the trained pipeline and exposing `/predict`.
-- `app.py` — Streamlit UI that calls the API.
-- `requirements_backend.txt` — backend dependencies (API, training, MLflow).
-- `requirements.txt` — frontend dependencies (Streamlit).
-- `Dockerfile` — container definition for API deployment.
-- `artifacts/` — saved model pipeline (ignored in git).
-- `mlruns/` — MLflow local tracking (ignored in git).
+The goal is to provide a production-ready sentiment analysis service that can classify text as positive or negative sentiment with high accuracy.
 
-## Getting started
+## Dataset Description
 
-1. Python 3.10+ recommended. Create env and install deps:
+**Stanford Sentiment Treebank (SST-2)**
+
+- **Source**: https://huggingface.co/datasets/stanfordnlp/sst2
+- **Description**: Binary sentiment classification dataset containing movie review sentences
+- **Labels**:
+  - `1` = Positive sentiment
+  - `0` = Negative sentiment
+- **Size**:
+  - Training set: ~67,000 samples
+  - Validation set: ~800 samples
+  - Test set: ~1,800 samples
+- **Cloud Storage**: Preprocessed datasets are stored in Google Cloud Storage bucket `gs://sst2-sentiment-m3/`
+  - `sst2_train.csv`
+  - `sst2_val.csv`
+  - `sst2_test.csv`
+
+## Model Architecture and Evaluation
+
+### Architecture
+
+The model uses a scikit-learn pipeline with two stages:
+
+1. **TF-IDF Vectorizer**
+
+   - `max_features`: 20,000
+   - `ngram_range`: (1, 2) — captures unigrams and bigrams
+   - `lowercase`: True
+   - Feature extraction converts text into numerical TF-IDF weighted vectors
+
+2. **Logistic Regression Classifier**
+   - `C`: 1.0 (inverse regularization strength)
+   - `max_iter`: 500
+   - `solver`: default (lbfgs)
+   - Binary classification with probability estimates
+
+### Evaluation Metrics
+
+- **Primary Metric**: Accuracy
+- **Secondary Metric**: F1 Score (macro)
+- **Validation Performance**: Tracked and logged via MLflow
+- All hyperparameters and metrics are logged to MLflow for experiment tracking and reproducibility
+
+### Training Pipeline
+
+The training process ([src/train.py](src/train.py)):
+
+1. Loads configuration from [config.yaml](config.yaml)
+2. Fetches preprocessed data from GCS
+3. Trains TF-IDF + Logistic Regression pipeline
+4. Evaluates on validation set
+5. Logs parameters and metrics to MLflow
+6. Saves trained pipeline to `artifacts/model_pipeline.joblib`
+
+## Cloud Services Used
+
+### Google Cloud Storage (GCS)
+
+- **Purpose**: Dataset storage and versioning
+- **Bucket**: `gs://sst2-sentiment-m3/`
+- **Files**: Preprocessed train/validation/test CSV files
+- **Access**: Public read access via `gcsfs` library
+
+### Google Cloud Run
+
+- **Purpose**: Serverless API deployment
+- **Service**: `sst2-api`
+- **Region**: `us-east1`
+- **Features**:
+  - Automatic scaling based on request volume
+  - HTTPS endpoint with SSL
+  - Containerized FastAPI application
+  - No authentication required (public access)
+- **Deployed API**: https://sst2-api-664742743732.us-east1.run.app/predict
+
+### Streamlit Cloud
+
+- **Purpose**: Front-end web application hosting
+- **Integration**: Calls deployed Cloud Run API endpoint
+- **Features**:
+  - Interactive text input interface
+  - Real-time sentiment predictions
+  - Probability scores displayed
+- **Deployed App**: https://aipi510-project3-sentiment.streamlit.app/
+
+### MLflow
+
+- **Purpose**: Experiment tracking and model versioning
+- **Storage**: Local filesystem (`mlruns/` directory)
+- **Tracked Items**:
+  - Hyperparameters (TF-IDF settings, model params)
+  - Evaluation metrics (accuracy, F1 score)
+  - Trained model artifacts
+
+## Setup and Usage Instructions
+
+### Prerequisites
+
+- Python 3.10 or 3.11
+- Docker (for containerization)
+- Google Cloud SDK (for deployment)
+- Git
+
+### Local Development Setup
+
+1. **Clone the repository and navigate to project directory**:
+
+   ```bash
+   cd AIPI510-Project3
+   ```
+
+2. **Create and activate virtual environment**:
+
    ```bash
    python3.11 -m venv .venv
-   source .venv/bin/activate
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   ```
+
+3. **Install dependencies**:
+
+   ```bash
    pip install -r requirements_backend.txt
    ```
-2. Train and log to MLflow; saves model pipeline to `artifacts/`:
+
+4. **Train the model**:
+
    ```bash
    python -m src.train
    ```
-   This downloads data from GCS (`gs://sst2-sentiment-m3/`), trains the model, and saves artifacts.
-3. Run API locally:
+
+   This will:
+
+   - Download data from GCS
+   - Train the TF-IDF + Logistic Regression pipeline
+   - Log metrics to MLflow
+   - Save model to `artifacts/model_pipeline.joblib`
+
+5. **View MLflow tracking**:
    ```bash
-   uvicorn src.api.main:app --host 0.0.0.0 --port 8000
-   # then POST to /predict with {"text": "I loved this movie!"}
+   mlflow ui
    ```
-4. Docker (local):
+   Open http://localhost:5000 to view experiments
+
+### Running the API Locally
+
+1. **Start the FastAPI server**:
+
+   ```bash
+   uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+   ```
+
+2. **Test the API**:
+
+   ```bash
+   curl -X POST "http://localhost:8000/predict" \
+     -H "Content-Type: application/json" \
+     -d '{"text": "I loved this movie!"}'
+   ```
+
+3. **View API documentation**: Open http://localhost:8000/docs
+
+### Running with Docker
+
+1. **Build the Docker image**:
+
    ```bash
    docker build -t sentiment-api .
+   ```
+
+2. **Run the container**:
+   ```bash
    docker run -p 8000:8000 sentiment-api
    ```
-5. Streamlit UI (local):
+
+### Running the Streamlit Frontend Locally
+
+1. **Install frontend dependencies**:
+
    ```bash
    pip install -r requirements.txt
+   ```
+
+2. **Run Streamlit app** (pointing to deployed API):
+
+   ```bash
    streamlit run app.py
    ```
 
-## Config
+3. **Access the app**: Open http://localhost:8501
 
-Tune paths, split ratios, TF-IDF settings, and model params in `config.yaml`. MLflow tracking URI is set to a local `mlruns/` directory by default.
+### Deploying to Google Cloud Run
 
-## API
+1. **Authenticate with Google Cloud**:
 
-- `POST /predict` — body: `{"text": "string"}`; returns label and probability.
-
-## Deployment targets
-
-- API: Google Cloud Run (containerized FastAPI).
-- Front-end: Streamlit Cloud (consumes live API).
-- Data hosting: push `data/processed/*.csv` to a public location (GitHub raw or Hugging Face dataset) and set `data.remote_base_url` for reproducible downloads.
-
-## Front-end (Streamlit)
-
-- Local: `streamlit run app.py` (update API URL in `app.py` if needed).
-- Deploy to Streamlit Cloud:
-  1. Push this repo to GitHub.
-  2. Create a new Streamlit app pointing to `app.py`.
-  3. Update the API URL in `app.py` to your deployed Cloud Run endpoint.
-
-## Cloud Run deployment (manual steps)
-
-Prereqs: gcloud CLI authenticated to your GCP project, Artifact Registry enabled.
-
-1. Ensure `artifacts/model_pipeline.joblib` exists (run training first).
-2. Build and push:
    ```bash
-   gcloud builds submit --tag gcr.io/$PROJECT_ID/sentiment-api
+   gcloud auth login
+   gcloud config set project YOUR_PROJECT_ID
    ```
-3. Deploy:
+
+2. **Build and push Docker image**:
+
    ```bash
-   gcloud run deploy sentiment-api \
-     --image gcr.io/$PROJECT_ID/sentiment-api \
+   gcloud builds submit --tag gcr.io/YOUR_PROJECT_ID/sentiment-api
+   ```
+
+3. **Deploy to Cloud Run**:
+
+   ```bash
+   gcloud run deploy sst2-api \
+     --image gcr.io/YOUR_PROJECT_ID/sentiment-api \
      --platform managed \
-     --region us-central1 \
+     --region us-east1 \
      --allow-unauthenticated \
-     --port 8000 \
-     --set-env-vars CONFIG_PATH=config/config.yaml
+     --port 8000
    ```
-4. Grab the HTTPS URL from Cloud Run and set it as `API_URL` in Streamlit.
 
-## Dataset
+4. **Get the service URL**: The deployment will output the HTTPS endpoint
 
-- **SST-2 (Stanford Sentiment Treebank)**: https://huggingface.co/datasets/stanfordnlp/sst2
-- Binary labels: 1 = positive, 0 = negative. Metric: accuracy (also report macro F1).
-- Cleaned CSVs stored in Google Cloud Storage bucket `gs://sst2-sentiment-m3/` for reproducible access.
+### Configuration
 
-## Model
+All pipeline settings are configured in [config.yaml](config.yaml):
 
-- TF-IDF + Logistic Regression (scikit-learn).
-- Hyperparameters in `config/config.yaml` (n-grams, max_features, C, max_iter).
-- Training/eval logged to MLflow at `mlruns/` (local filesystem URI).
+- **Data paths**: GCS bucket URLs for train/val/test data
+- **Feature extraction**: TF-IDF parameters (max_features, ngram_range)
+- **Model hyperparameters**: Logistic regression settings (C, max_iter)
+- **MLflow tracking**: Experiment name and tracking URI
+- **Artifacts**: Model save path
 
-## Notes
-
-- Train before building/deploying the API so the model artifact exists at `artifacts/model_pipeline.joblib`.
-- To run the API elsewhere, ship the artifact with the image or mount it; otherwise, the service will fail to start.
-
-## Deliverables checklist
-
-- Code for preprocessing, training, serving, deployment scripts.
-- `config.yaml` for pipeline params.
-- `requirements_backend.txt` (API/training) and `requirements.txt` (frontend).
-- Dockerfile for API.
-- MLflow logging.
-- FastAPI `/predict` endpoint.
-- Front-end (Streamlit) that consumes the deployed API.
-- README with overview, dataset info, model summary, cloud services, setup, and links.
-
-## Live Deployment
-
-### Deployed Links
+## Live Deployment Links
 
 - **API Endpoint**: https://sst2-api-664742743732.us-east1.run.app/predict
 - **API Documentation**: https://sst2-api-664742743732.us-east1.run.app/docs
 - **Frontend Application**: https://aipi510-project3-sentiment.streamlit.app/
 
-### Cloud Services
+### Using the Deployed API
 
-- **Google Cloud Storage**: Dataset hosting (`gs://sst2-sentiment-m3/`)
-- **Google Cloud Run**: Serverless API deployment with automatic scaling
-- **Streamlit Cloud**: Frontend web application hosting
-
-### Example API Usage
+**Example cURL request**:
 
 ```bash
 curl -X POST "https://sst2-api-664742743732.us-east1.run.app/predict" \
@@ -144,7 +261,7 @@ curl -X POST "https://sst2-api-664742743732.us-east1.run.app/predict" \
   -d '{"text": "This movie was amazing!"}'
 ```
 
-**Response**:
+**Example response**:
 
 ```json
 {
@@ -153,6 +270,49 @@ curl -X POST "https://sst2-api-664742743732.us-east1.run.app/predict" \
 }
 ```
 
+## Project Structure
+
+```
+AIPI510-Project3/
+├── config.yaml              # Pipeline configuration
+├── requirements_backend.txt # Backend dependencies (API, training, MLflow)
+├── requirements.txt         # Frontend dependencies (Streamlit)
+├── Dockerfile              # Container definition for API
+├── app.py                  # Streamlit frontend application
+├── src/
+│   ├── __init__.py
+│   ├── data_ingest.py      # Data loading from GCS
+│   ├── train.py            # Training pipeline with MLflow
+│   └── api/
+│       └── main.py         # FastAPI application
+├── artifacts/              # Saved model artifacts (gitignored)
+│   └── model_pipeline.joblib
+└── mlruns/                 # MLflow tracking data (gitignored)
+```
+
+## Technologies and Libraries
+
+- **ML/Data**: scikit-learn, pandas, numpy, joblib
+- **Experiment Tracking**: MLflow
+- **API Framework**: FastAPI, Uvicorn, Pydantic
+- **Frontend**: Streamlit, requests
+- **Cloud**: gcsfs (GCS access), Google Cloud Run
+- **Containerization**: Docker
+- **Configuration**: PyYAML
+
+## Future Improvements
+
+- Add test dataset evaluation metrics
+- Implement model versioning and A/B testing
+- Add authentication to API endpoints
+- Expand to multi-class sentiment (neutral, very positive, very negative)
+- Integrate with CI/CD pipeline for automated deployments
+- Add comprehensive unit and integration tests
+
 ## Attribution
 
-- Portions of the codebase were written with assistance from ChatGPT.
+Portions of this codebase were developed with assistance from ChatGPT and Claude Code.
+
+## License
+
+This project is for educational purposes as part of Duke AIPI 510 coursework.
