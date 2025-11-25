@@ -27,4 +27,3 @@ dist/
 # Project artifacts
 mlruns/
 .mlruns/
-data/raw/
