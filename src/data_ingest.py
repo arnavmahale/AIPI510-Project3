@@ -1,3 +1,6 @@
+# Attribution
+# Portions of the codebase were developed with assistance from ChatGPT and Claude Code.
+
 from pathlib import Path
 from typing import Tuple
 

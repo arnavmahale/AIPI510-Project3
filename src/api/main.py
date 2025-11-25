@@ -1,3 +1,6 @@
+# Attribution
+# Portions of the codebase were developed with assistance from ChatGPT and Claude Code.
+
 from fastapi import FastAPI
 from pydantic import BaseModel
 import joblib
