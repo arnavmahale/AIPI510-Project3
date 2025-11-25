@@ -1,0 +1,15 @@
+# Exclude VCS and local-only caches
+.git
+.gitignore
+.gcloudignore
+.venv/
+__pycache__/
+*.pyc
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+.ipynb_checkpoints/
+mlruns/
+.mlruns/
+data/raw/
