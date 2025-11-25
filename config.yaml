@@ -1,10 +1,9 @@
 data:
   source: "glue"
   subset: "sst2"
-  cleaned_train_path: "data/processed/sst2_train.csv"
-  cleaned_val_path: "data/processed/sst2_val.csv"
-  cleaned_test_path: "data/processed/sst2_test.csv"
-  remote_base_url: "https://raw.githubusercontent.com/arnavmahale/AIPI510-Project3/main/data/processed"
+  cleaned_train_path: "gs://sst2-sentiment-m3/sst2_train.csv"
+  cleaned_val_path: "gs://sst2-sentiment-m3/sst2_val.csv"
+  cleaned_test_path: "gs://sst2-sentiment-m3/sst2_test.csv"
   text_column: "sentence"
   target_column: "label"
 
